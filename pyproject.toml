@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 119
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 119
+select = ["E", "W", "F", "I", "UP", "B", "C4"]
+ignore = ["E501"] # Handled by black
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

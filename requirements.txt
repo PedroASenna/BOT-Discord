@@ -1,0 +1,14 @@
+# discord.py and wavelink for Discord/Lavalink interaction
+discord.py>=2.3.2
+wavelink>=3.0.0
+
+# Configuration management
+python-dotenv>=1.0.0
+
+# For linting and formatting
+ruff
+black
+
+# For testing
+pytest
+pytest-asyncio

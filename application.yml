@@ -1,0 +1,37 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+lavalink:
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: false
+      soundcloud: true
+    filters:
+      # Habilitando todos os filtros para máxima compatibilidade
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      rotation: true
+      distortion: true
+      channelMix: true
+      lowPass: true
+    playerUpdateInterval: 5 # Frequência em segundos para atualizações de player (ex: posição da música)
+logging:
+  file:
+    max-history: 30
+    max-size: 1GB
+  path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+
+    ratelimit:
+  ipBlocks: ["fe80::f74c:48ec:65b0:7203%20"] # Vamos preencher isso no próximo passo
+  excludeIps: [] 
+  strategy: "RotateOnBan" # Muda de IP quando um é bloqueado
+  searchTriggersFail: true
+  retryLimit: -1 # Tenta indefinidamente
