@@ -112,3 +112,8 @@ class MusicBot(commands.Bot):
 
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload):
         await lavalink_events.on_wavelink_track_exception(payload)
+
+    @commands.hybrid_command(name="ping", description="Testa se o bot está respondendo")
+    async def ping(self, ctx):
+        """Comando de teste para verificar se o bot está online."""
+        await ctx.send(f"🏓 Pong! Latência: {self.latency*1000:.0f}ms")
