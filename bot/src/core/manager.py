@@ -103,8 +103,9 @@ class MusicManager:
     async def on_track_error(self, track: wavelink.Playable, error: Exception):
         """Callback para erro na música."""
         if self.last_interaction and self.last_interaction.channel:
+            error_msg = str(error)[:1800]  # Trunca para não exceder 2000 caracteres do Discord
             await self.last_interaction.channel.send(
-                f"❌ Ocorreu um erro ao tentar tocar `{track.title}`: `{error}`"
+                f"❌ Ocorreu um erro ao tentar tocar `{track.title}`: `{error_msg}`"
             )
         await self.play_next_track()
 
