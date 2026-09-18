@@ -17,12 +17,13 @@ class HolidaysCog(commands.Cog):
     holidays_group = app_commands.Group(name="holidays", description="Comandos de feriados")
 
     @holidays_group.command(name="next", description="Mostra os próximos feriados")
-    @app_commands.describe(limit="Quantidade de feriados a mostrar (padrão: 5)")
-    async def next_holidays(self, interaction: discord.Interaction, limit: int = 5):
+    @app_commands.describe(limit="Quantidade de feriados a mostrar (padrão: 5)", municipal="Incluir feriados municipais? (S/N)")
+    async def next_holidays(self, interaction: discord.Interaction, limit: int = 5, municipal: str = "N"):
         await interaction.response.defer()
 
         try:
-            holidays = get_next_holidays(limit=min(limit, 10))
+            include_municipal = municipal.upper() in ["S", "SIM"]
+            holidays = get_next_holidays(limit=min(limit, 10), include_municipal=include_municipal, city="Imperatriz")
 
             if not holidays:
                 await interaction.followup.send("📭 Nenhum feriado encontrado", ephemeral=True)
@@ -46,13 +47,16 @@ class HolidaysCog(commands.Cog):
                 else:
                     time_str = f"📅 Em {days} dias"
 
+                scope_badge = "🏙️ Feriado Municipal" if holiday.get("scope") == "municipal" else "🇧🇷 Feriado Nacional"
+
                 embed.add_field(
                     name=f"{holiday['name']} {time_str}",
-                    value=formatted_date,
+                    value=f"{formatted_date}\n*{scope_badge}*",
                     inline=False,
                 )
 
-            embed.set_footer(text="Feriados brasileiros fixos e móveis")
+            footer_text = "Incluindo feriados de Imperatriz" if include_municipal else "Apenas feriados nacionais"
+            embed.set_footer(text=f"Feriados brasileiros fixos e móveis • {footer_text}")
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
@@ -60,13 +64,16 @@ class HolidaysCog(commands.Cog):
             await interaction.followup.send("❌ Erro ao processar comando", ephemeral=True)
 
     @holidays_group.command(name="today", description="Verifica se hoje é feriado")
-    async def holiday_today(self, interaction: discord.Interaction):
+    @app_commands.describe(municipal="Incluir feriados municipais? (S/N)")
+    async def holiday_today(self, interaction: discord.Interaction, municipal: str = "N"):
         await interaction.response.defer()
 
         try:
-            holiday = is_holiday_today()
+            include_municipal = municipal.upper() in ["S", "SIM"]
+            holiday = is_holiday_today(include_municipal=include_municipal, city="Imperatriz")
 
             if holiday:
+                scope_badge = "🏙️ Feriado Municipal" if holiday.get("scope") == "municipal" else "🇧🇷 Feriado Nacional"
                 embed = discord.Embed(
                     title=f"🎉 {holiday['name']}",
                     description="Hoje é feriado!",
@@ -75,6 +82,11 @@ class HolidaysCog(commands.Cog):
                 embed.add_field(
                     name="Data",
                     value=datetime.now().strftime("%d/%m/%Y"),
+                    inline=False,
+                )
+                embed.add_field(
+                    name="Tipo",
+                    value=scope_badge,
                     inline=False,
                 )
                 await interaction.followup.send(embed=embed)
@@ -123,12 +135,14 @@ class HolidaysCog(commands.Cog):
             await interaction.followup.send("❌ Erro ao processar comando", ephemeral=True)
 
     @holidays_group.command(name="notify", description="Envia notificação de feriados próximos")
+    @app_commands.describe(municipal="Incluir feriados municipais? (S/N)")
     @commands.has_permissions(administrator=True)
-    async def notify_holidays(self, interaction: discord.Interaction):
+    async def notify_holidays(self, interaction: discord.Interaction, municipal: str = "N"):
         await interaction.response.defer()
 
         try:
-            upcoming = get_upcoming_holidays(days_before=3)
+            include_municipal = municipal.upper() in ["S", "SIM"]
+            upcoming = get_upcoming_holidays(days_before=3, include_municipal=include_municipal, city="Imperatriz")
 
             if not upcoming:
                 await interaction.followup.send("✅ Nenhum feriado com antecedência de 3 dias", ephemeral=True)
@@ -144,9 +158,10 @@ class HolidaysCog(commands.Cog):
                 formatted_date = holiday_date.strftime("%d/%m/%Y (%A)")
                 days = holiday["days_until"]
 
+                scope_badge = "🏙️" if holiday.get("scope") == "municipal" else "🇧🇷"
                 emoji = "🔴" if days == 0 else "⏰" if days == 1 else "📅"
                 embed.add_field(
-                    name=f"{emoji} {holiday['name']}",
+                    name=f"{emoji} {scope_badge} {holiday['name']}",
                     value=f"{formatted_date} (em {days} dias)",
                     inline=False,
                 )
@@ -156,6 +171,41 @@ class HolidaysCog(commands.Cog):
 
         except Exception as e:
             logger.error(f"Erro ao enviar notificação de feriados: {e}")
+            await interaction.followup.send("❌ Erro ao processar comando", ephemeral=True)
+
+    @holidays_group.command(name="config", description="Configura preferências de feriados do servidor")
+    @app_commands.describe(show_municipal="Mostrar feriados municipais por padrão? (sim/não)")
+    @commands.has_permissions(administrator=True)
+    async def config_holidays(self, interaction: discord.Interaction, show_municipal: str = "não"):
+        await interaction.response.defer()
+
+        try:
+            guild_id = interaction.guild.id
+            include_municipal = show_municipal.lower() in ["sim", "s", "yes", "y"]
+
+            self.db.execute(
+                """
+                INSERT OR REPLACE INTO server_config (guild_id, key, value)
+                VALUES (?, ?, ?)
+                """,
+                (guild_id, "show_municipal_holidays", "true" if include_municipal else "false")
+            )
+
+            embed = discord.Embed(
+                title="✅ Configurações de Feriados Atualizadas",
+                description=f"Feriados municipais: {'✅ Habilitados' if include_municipal else '❌ Desabilitados'}",
+                color=discord.Color.green(),
+            )
+            embed.add_field(
+                name="Detalhes",
+                value="Os comandos de feriados agora mostrarão municipais por padrão" if include_municipal else "Os comandos mostrarão apenas feriados nacionais",
+                inline=False,
+            )
+            await interaction.followup.send(embed=embed)
+            logger.info(f"Configurações de feriados atualizadas para servidor {interaction.guild.name}")
+
+        except Exception as e:
+            logger.error(f"Erro ao configurar feriados: {e}")
             await interaction.followup.send("❌ Erro ao processar comando", ephemeral=True)
 
 
