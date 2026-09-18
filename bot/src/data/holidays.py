@@ -17,6 +17,18 @@ FIXED_HOLIDAYS = [
     (12, 25, "Natal"),
 ]
 
+# Feriados Municipais - Imperatriz/MA
+IMPERATRIZ_MUNICIPAL_HOLIDAYS = [
+    (10, 28, "Aniversário de Imperatriz"),  # Feriado municipal mais importante
+    (6, 23, "Santo Antônio"),  # Celebração local
+]
+
+# Feriados Estaduais - Maranhão
+MARANHAO_STATE_HOLIDAYS = [
+    (6, 23, "Santo Antônio"),
+    (10, 28, "Zumbi dos Palmares"),  # Alguns estados do nordeste celebram
+]
+
 
 def easter_date(year: int) -> Tuple[int, int]:
     """Calcula a data da Páscoa para um determinado ano usando o algoritmo de Meeus."""
@@ -68,21 +80,28 @@ def get_movable_holidays(year: int) -> List[Dict[str, any]]:
     return movable
 
 
-def get_all_holidays(year: int) -> List[Dict[str, any]]:
-    """Retorna todos os feriados (fixos e móveis) para um determinado ano."""
+def get_all_holidays(year: int, include_municipal: bool = False, city: str = "Imperatriz") -> List[Dict[str, any]]:
+    """Retorna todos os feriados (fixos e móveis) para um determinado ano.
+
+    Args:
+        year: Ano a buscar os feriados
+        include_municipal: Se True, inclui feriados municipais
+        city: Cidade para buscar feriados municipais (padrão: Imperatriz)
+    """
     holidays = []
 
-    # Feriados fixos
+    # Feriados fixos nacionais
     for month, day, name in FIXED_HOLIDAYS:
         holidays.append(
             {
                 "date": f"{year:04d}-{month:02d}-{day:02d}",
                 "name": name,
                 "type": "fixed",
+                "scope": "nacional",
             }
         )
 
-    # Feriados móveis
+    # Feriados móveis nacionais
     movable = get_movable_holidays(year)
     for holiday in movable:
         holidays.append(
@@ -90,20 +109,34 @@ def get_all_holidays(year: int) -> List[Dict[str, any]]:
                 "date": holiday["date"],
                 "name": holiday["name"],
                 "type": "movable",
+                "scope": "nacional",
             }
         )
+
+    # Feriados municipais (opcional)
+    if include_municipal:
+        if city.lower() == "imperatriz":
+            for month, day, name in IMPERATRIZ_MUNICIPAL_HOLIDAYS:
+                holidays.append(
+                    {
+                        "date": f"{year:04d}-{month:02d}-{day:02d}",
+                        "name": f"{name} 🏙️",
+                        "type": "fixed",
+                        "scope": "municipal",
+                    }
+                )
 
     return sorted(holidays, key=lambda h: h["date"])
 
 
-def get_upcoming_holidays(days_before: int = 3) -> List[Dict[str, any]]:
+def get_upcoming_holidays(days_before: int = 3, include_municipal: bool = False, city: str = "Imperatriz") -> List[Dict[str, any]]:
     """Retorna feriados próximos com antecedência especificada."""
     today = datetime.now()
     upcoming = []
 
     # Busca feriados nos próximos 2 anos (para cobrir feriados do próximo ano)
     for year in [today.year, today.year + 1]:
-        holidays = get_all_holidays(year)
+        holidays = get_all_holidays(year, include_municipal=include_municipal, city=city)
 
         for holiday in holidays:
             holiday_date = datetime.strptime(holiday["date"], "%Y-%m-%d")
@@ -121,13 +154,13 @@ def get_upcoming_holidays(days_before: int = 3) -> List[Dict[str, any]]:
     return sorted(upcoming, key=lambda h: h["date"])
 
 
-def get_next_holidays(limit: int = 5) -> List[Dict[str, any]]:
+def get_next_holidays(limit: int = 5, include_municipal: bool = False, city: str = "Imperatriz") -> List[Dict[str, any]]:
     """Retorna os próximos N feriados."""
     today = datetime.now()
     holidays_list = []
 
     for year in [today.year, today.year + 1]:
-        holidays = get_all_holidays(year)
+        holidays = get_all_holidays(year, include_municipal=include_municipal, city=city)
 
         for holiday in holidays:
             holiday_date = datetime.strptime(holiday["date"], "%Y-%m-%d")
@@ -147,12 +180,12 @@ def get_next_holidays(limit: int = 5) -> List[Dict[str, any]]:
     return holidays_list[:limit]
 
 
-def is_holiday_today() -> Dict[str, any] | None:
+def is_holiday_today(include_municipal: bool = False, city: str = "Imperatriz") -> Dict[str, any] | None:
     """Verifica se hoje é feriado."""
     today = datetime.now()
     today_str = today.strftime("%Y-%m-%d")
 
-    holidays = get_all_holidays(today.year)
+    holidays = get_all_holidays(today.year, include_municipal=include_municipal, city=city)
 
     for holiday in holidays:
         if holiday["date"] == today_str:
