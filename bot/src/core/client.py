@@ -19,6 +19,7 @@ class MusicBot(commands.Bot):
         intents.guilds = True
         intents.voice_states = True
         intents.members = True
+        intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
         self.guild_ids = guild_ids
         self.db = Database()
